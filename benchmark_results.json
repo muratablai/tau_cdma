@@ -1,0 +1,107 @@
+{
+  "timestamp": "2026-03-20T15:45:25",
+  "mode": "quick",
+  "python": "3.12.3",
+  "numpy": "2.4.2",
+  "scipy": "1.17.0",
+  "fim_vs_M": [
+    {
+      "M": 10,
+      "K": 7,
+      "N": 1000000,
+      "time_s": 9.7e-05,
+      "peak_MB": 0.0
+    },
+    {
+      "M": 20,
+      "K": 7,
+      "N": 1000000,
+      "time_s": 7.3e-05,
+      "peak_MB": 0.0
+    },
+    {
+      "M": 50,
+      "K": 7,
+      "N": 1000000,
+      "time_s": 5.1e-05,
+      "peak_MB": 0.01
+    },
+    {
+      "M": 100,
+      "K": 7,
+      "N": 1000000,
+      "time_s": 6.2e-05,
+      "peak_MB": 0.02
+    },
+    {
+      "M": 200,
+      "K": 7,
+      "N": 1000000,
+      "time_s": 7.5e-05,
+      "peak_MB": 0.03
+    },
+    {
+      "M": 500,
+      "K": 7,
+      "N": 1000000,
+      "time_s": 0.000105,
+      "peak_MB": 0.07
+    },
+    {
+      "M": 1000,
+      "K": 7,
+      "N": 1000000,
+      "time_s": 7.3e-05,
+      "peak_MB": 0.15
+    },
+    {
+      "M": 2000,
+      "K": 7,
+      "N": 1000000,
+      "time_s": 0.000169,
+      "peak_MB": 0.29
+    }
+  ],
+  "pipeline": {
+    "setup_benchmark": {
+      "time_s": 0.0047,
+      "peak_MB": 3.56
+    },
+    "classification_mi": {
+      "time_s": 0.0042,
+      "peak_MB": 0.01
+    },
+    "bayes_confusion": {
+      "time_s": 0.0135,
+      "peak_MB": 0.02
+    },
+    "dominance_margin": {
+      "time_s": 0.0003,
+      "peak_MB": 0.03
+    },
+    "cascade": {
+      "time_s": 0.0008,
+      "peak_MB": 0.04
+    }
+  },
+  "gamp_vamp": {
+    "gamp": {
+      "time_s": 0.1377,
+      "peak_MB": 0.07
+    },
+    "vamp": {
+      "time_s": 0.0393,
+      "peak_MB": 0.05
+    }
+  },
+  "validation": {
+    "tau_validation": {
+      "time_s": 97.83,
+      "peak_MB": 52.03
+    },
+    "heavy_ion_validation": {
+      "time_s": 11.06,
+      "peak_MB": 0.91
+    }
+  }
+}

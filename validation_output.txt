@@ -1,0 +1,561 @@
+╔══════════════════════════════════════════════════════════╗
+║  tau_cdma: Framework Prediction Validation Suite         ║
+║  Unified Formalism v4.5                                  ║
+╚══════════════════════════════════════════════════════════╝
+
+============================================================
+P1: Multiuser Efficiency Ordering
+============================================================
+
+  (a) 1D visible mass (M=200):
+      η[    e] = 0.0031
+      η[    μ] = 0.0030
+      η[    π] = 0.9931
+      η[    ρ] = 0.3087
+      η[   a₁] = 0.0696
+      η[ π2π⁰] = 0.1195
+      η[other] = 0.1220
+
+  (b) (m_vis, n_trk, PID) (200+2+3=205 bins, weights: mass=0.5, ntrk=0.2, PID=0.3):
+      η[    e] = 0.7638 ↑↑↑
+      η[    μ] = 0.7658 ↑↑↑
+      η[    π] = 0.9264
+      η[    ρ] = 0.3303
+      η[   a₁] = 0.2167
+      η[ π2π⁰] = 0.2566
+      η[other] = 0.0967
+
+  Observable dependence (η ratio and CRB improvement):
+         Ch  η_pid/η_1D        σ_1D       σ_PID   σ improve
+          e      ×249.4     0.01425     0.00069       ×20.5
+          μ      ×251.4     0.01428     0.00069       ×20.8
+          π        ×0.9     0.00034     0.00046        ×0.7
+          ρ        ×1.1     0.00148     0.00145        ×1.0
+         a₁        ×3.1     0.00208     0.00111        ×1.9
+       π2π⁰        ×2.1     0.00179     0.00140        ×1.3
+      other        ×0.8     0.00210     0.00250        ×0.8
+
+  (c) Shannon classification view:
+      I(K;Y) = 0.928 bits/event → 1.9 effective channels (of 7)
+      Fano bound: P_error ≥ 33.1%
+
+      Bayes-optimal MAP accuracy (theoretical ceiling):
+          Ch   1D mass     + PID      η_1D    alias%
+           e     42.4%     51.2%    0.0031      100%
+           μ      0.0%     30.0%    0.0030      100%
+           π     99.8%     49.9%    0.9931        0%
+           ρ     77.7%     88.8%    0.3087        3%
+          a₁     40.3%     40.1%    0.0696       72%
+        π2π⁰     28.0%     14.0%    0.1195       39%
+       other     19.7%      9.9%    0.1220        0%
+       Total     46.4%     48.3%
+
+      μ = 0% accuracy is a theorem: θ_e > θ_μ with
+      identical templates → P(μ|m) < P(e|m) for every mass bin.
+      Even the perfect classifier never predicts μ.
+      PID breaks this: μ accuracy → 30%
+
+  Checks:
+    |η₁-η₂|/max < 0.1 (e≈μ): ✓
+    η₃ > η₁ (π dominates augmented): ✓
+    η₃ > η₄ > η₅ (hadronic ordering): ✓
+    |η₅-η₆|/max < 0.2 (a₁≈π2π⁰): ✓
+    π dominates 1D (η_π > 0.9): ✓
+    e,μ aliased 1D (R_eμ > 0.99): ✓
+    e,μ near zero 1D (η < 0.05): ✓
+    Bayes μ = 0% in 1D (acc < 0.01): ✓
+    PID rescues μ (acc > 0.1): ✓
+
+  P1 PASSED
+
+============================================================
+P2: Aliasing Order (Template Distance + Monte Carlo)
+============================================================
+
+  Aliasing threshold ordering (d² > 0.05):
+      M*     (a₁,π2π⁰) = 3
+      M*        (ρ,a₁) = 3
+      M*         (π,ρ) = 3
+      M*         (e,μ) = 500
+      Ordering M*(a₁,π2π⁰) ≤ M*(ρ,a₁) ≤ M*(π,ρ) ≤ M*(e,μ): ✓
+
+  (a) Aliasing order (per-event d², M=3):
+      (e, μ): d² = 0.0000
+      (e, ρ): d² = 0.0673
+      (μ, ρ): d² = 0.0673
+      (π2π⁰, other): d² = 0.1382
+      (a₁, other): d² = 0.1901
+      (ρ, π2π⁰): d² = 0.5650
+      (a₁, π2π⁰): d² = 0.6047
+      (e, π2π⁰): d² = 0.8504
+      (μ, π2π⁰): d² = 0.8504
+      (ρ, other): d² = 1.2486
+      (e, other): d² = 1.6742
+      (μ, other): d² = 1.6742
+      (ρ, a₁): d² = 2.3352
+      (e, a₁): d² = 2.8198
+      (μ, a₁): d² = 2.8198
+      (π, ρ): d² = 6.6109
+
+  Per-event d² vs M:
+      M       e-μ       e-π      ρ-a₁   a₁-π2π⁰
+      3    0.0000    7.8761    2.3352    0.6047
+      5    0.0000   10.7018    3.2602    0.3395
+     10    0.0008   10.5957    3.6893    0.4740
+     20    0.0062   10.4238    3.6578    0.4941
+     50    0.0050   10.2622    3.6610    0.4930
+    100    0.0052   10.2450    3.6501    0.4949
+    200    0.0050   10.2423    3.6519    0.4935
+    500    0.0048   10.2400    3.6513    0.4935
+
+  (b) Monte Carlo validation (200 simulations per M):
+      e-μ aliasing signature: correlation sign flip
+          M   corr(e,μ)         σ_e         σ_μ      σ(e+μ)         Phase
+          3      +1.000     0.00033     0.00033     0.00067    degenerate
+          5      +1.000     0.00114     0.00114     0.00228    degenerate
+         10      +1.000     0.00069     0.00069     0.00138    degenerate
+         20      -0.978     0.00559     0.00543     0.00116     trade-off
+         50      -0.967     0.00489     0.00487     0.00126     trade-off
+        100      -0.985     0.00761     0.00746     0.00132     trade-off
+        200      -0.968     0.00470     0.00476     0.00119     trade-off
+
+      Correlation sign flip at M=20
+      (e-μ transition from degenerate to partially separable)
+
+      Estimator efficiency at M=200 (σ_MC/σ_CRB):
+             e: 0.33
+             μ: 0.33
+             π: 1.00
+             ρ: 0.96
+            a₁: 1.01
+          π2π⁰: 0.98
+         other: 1.07
+      (e,μ < 1.0 at M=200 because aliasing inflates CRB)
+
+  Checks:
+    (e,μ) most aliased (d²≈0): ✓
+    (a₁,π2π⁰) more aliased than (ρ,a₁): ✓
+    (e,μ) more aliased than (e,π): ✓
+    π most distinct (max d² from all): ✓
+    M* ordering: M*(a₁,π2π⁰) ≤ ... ≤ M*(e,μ): ✓
+    MC: e-μ degenerate at M=3 (corr>0.9): ✓
+    MC: e-μ trade-off at M=200 (corr<-0.9): ✓
+    MC: correlation sign flip exists: ✓
+    MC: σ(e+μ) < σ_e at M=200: ✓
+
+  P2 PASSED
+
+============================================================
+P3: Geometric vs Random Erasure
+============================================================
+
+  α ≈ 0.50 (σ = √CRB):
+   Channel      Random   Geometric       Verdict
+         e     0.01925           ∞    ∞ (erased)
+         μ     0.01929           ∞    ∞ (erased)
+         π     0.00047           ∞    ∞ (erased)
+         ρ     0.00212     0.00167         ×0.79
+        a₁     0.00290     0.00262         ×0.90
+      π2π⁰     0.00255     0.00397         ×1.56
+     other     0.00294     0.00696         ×2.36
+
+  α ≈ 0.70 (σ = √CRB):
+   Channel      Random   Geometric       Verdict
+         e     0.01659           ∞    ∞ (erased)
+         μ     0.01663           ∞    ∞ (erased)
+         π     0.00041     0.59539      ×1461.64
+         ρ     0.00178     0.00151         ×0.85
+        a₁     0.00246     0.00216         ×0.88
+      π2π⁰     0.00214     0.00183         ×0.85
+     other     0.00247     0.00283         ×1.14
+
+  α ≈ 0.90 (σ = √CRB):
+   Channel      Random   Geometric       Verdict
+         e     0.01467     0.03815         ×2.60
+         μ     0.01470     0.03808         ×2.59
+         π     0.00034     0.00034         ×0.99
+         ρ     0.00156     0.00148         ×0.95
+        a₁     0.00221     0.00209         ×0.95
+      π2π⁰     0.00191     0.00179         ×0.94
+     other     0.00221     0.00215         ×0.97
+
+  Channels where geometric ≥ random vs α:
+    α=0.30: 6/7
+    α=0.45: 6/7
+    α=0.60: 4/7
+    α=0.75: 4/7
+    α=0.90: 2/7
+
+  CRB ratio r_k = σ²_geometric / σ²_random at α=0.50:
+           e: r_k = ∞ (geometric kills) (leptonic)
+           μ: r_k = ∞ (geometric kills) (leptonic)
+           π: r_k = ∞ (geometric kills) (non-leptonic)
+           ρ: r_k = 0.62 (non-leptonic)
+          a₁: r_k = 0.82 (non-leptonic)
+        π2π⁰: r_k = 2.43 (non-leptonic)
+       other: r_k = 5.59 (non-leptonic)
+    Max finite r_k: other = 5.59 (non-leptonic)
+
+  Checks:
+    r_k > 1.2 for ≥1 hadronic at α=0.5: ✓
+    max finite r_k on hadronic channel: ✓
+    Geometric kills ≥1 channel that random preserves: ✓
+
+  P3 PASSED
+
+============================================================
+P4: Cascade Bottleneck (τ→a₁ν→3πν)
+============================================================
+
+  Stage 1 info (τ→a₁ν):   I₁ = 1.85e+06
+  Stage 2 info (a₁→3π):    I₂ = 1.91e+05
+  Ratio I₁/I₂:             9.7×
+  Bottleneck:              stage2
+  Cascade SF:              4.23
+  Effective width:         420.0 MeV
+  DPI: I_cascade ≤ min(I₁,I₂) = I₂ ✓
+
+  Cascade comparison (broader resonance = worse bottleneck):
+                   Decay   Γ (MeV)      SF    I_stage1
+               τ→ρν→ππ⁰ν     149.1    11.9    1.91e+06
+               τ→a₁ν→3πν     420.0     4.2    1.85e+06
+    → a₁ 2.8× broader than ρ → more information lost in cascade
+
+  Checks:
+    Bottleneck at stage 2 (broad a₁): ✓
+    I₁ > I₂ (stage 2 is limiting): ✓
+    DPI: I₂ < I₁ (cascade info ≤ min): ✓
+    Bottleneck ratio > 5: ✓
+
+  P4 PASSED
+
+============================================================
+P7: Optimal Binning (Fisher Information Saturation)
+============================================================
+
+  Fisher information saturation (% of M=1000):
+      M       e       μ       π       ρ      a₁    π2π⁰   other
+      3   84.0%   82.6%   70.3%   75.7%   76.4%   46.4%   87.7%
+      5   88.9%   87.4%  100.0%   84.4%   97.7%   71.2%   90.1%
+     10  100.0%  100.0%   98.6%   98.5%  100.0%  100.0%  100.0%
+     20   99.4%   97.5%   97.0%   99.2%   99.3%   98.1%   98.6%
+     50   97.6%   96.1%   96.2%   98.9%   99.2%   97.4%   98.0%
+    100   98.9%   97.4%   95.9%   99.0%   99.3%   98.0%   98.6%
+    200   97.9%   96.4%   96.0%   98.7%   99.2%   97.6%   98.1%
+    500   98.1%   96.5%   96.0%   98.8%   99.2%   97.7%   98.2%
+   1000   98.0%   96.5%   96.0%   98.7%   99.2%   97.7%   98.2%
+
+  90% saturation point:
+   Channel   M_opt      SF      bin≈Γ?
+         e       7     N/A     257 MeV
+         μ      10     N/A     180 MeV
+         π       5     N/A     360 MeV
+         ρ      10     5.2     180 MeV
+        a₁       5     2.9     360 MeV
+      π2π⁰      10     2.4     180 MeV
+     other       5     N/A     360 MeV
+
+  Note: Fisher info peaks then drops slightly (bg dilution):
+    F_   π peaks at M=7, drops to 0.960× at M=1000
+    F_   ρ peaks at M=15, drops to 0.987× at M=1000
+    F_  a₁ peaks at M=10, drops to 0.992× at M=1000
+
+  Correlation(SF, M_opt) for resonances: 0.351
+  Note: weak correlation (0.35) is expected for the τ system —
+  all widths (149-450 MeV) are >> σ_det (20 MeV), so spreading
+  factors span only 2× (from 3 to 7.5). A stronger test would use
+  charm mesons (widths keV to hundreds of MeV) for wider dynamic range.
+
+  Checks:
+    SF-Mopt positive correlation (resonance channels): ✓
+    All channels >90% by M=200: ✓
+    π saturates early (>80% at M=5): ✓
+    Peak M finite (not at boundary): ✓
+    Wide channels saturate before narrow (M_opt(a₁) ≤ M_opt(ρ)): ✓
+
+  P7 PASSED
+
+============================================================
+P8: Blind Decomposition & Channel Discovery
+============================================================
+
+  --- Layer 1: Blind NMF Template Recovery ---
+    Data: 10 experiments × 200 bins, N=1e+05
+    K_best (BIC) = 8
+    Recovery at K=7 (mean error): 1.061
+           e: 0.613
+           μ: 1.130
+           π: 0.943
+           ρ: 0.769
+          a₁: 1.333
+        π2π⁰: 1.274
+       other: 1.362
+
+  --- Layer 2: Unknown Channel Discovery ---
+    Injected: m=500 MeV, Γ=30 MeV, BR=3.0%
+    Data: 10×1e+05 = 1e+06 total events
+    K=7 fit χ²/ndof = 38.3 (>>1 = something missing)
+    Max pull: 30.5σ at m = 500 MeV (true: 500)
+    Window scan: 68.6σ at m ≈ 500 MeV
+
+    Likelihood ratio scan:
+    Best-fit mass: 500 MeV (true: 500)
+    Recovered BR: 0.0374 (true: 0.0300)
+    Significance: 78.6σ
+
+  --- Layer 3: Detection Sensitivity ---
+        BR        N    N_total     Pull  Found
+     0.005    1e+05      1e+06     6.0σ      ✓
+     0.050    1e+05      1e+06    49.0σ      ✓
+
+  --- Layer 4: NN as CDMA Multiuser Receiver ---
+
+    (a) Classification performance:
+        Overall: 1D NN = 0.467, 5D NN = 0.761
+            Ch  NN(1D)  NN(5D)    η_1D                      Interpretation
+             e   0.514   0.907  0.0031          η≈0 → 1D fails, 5D rescues
+             μ   0.000   0.945  0.0030          η≈0 → 1D fails, 5D rescues
+             π   0.960   0.928  0.9931           η high → both NNs succeed
+             ρ   0.792   0.866  0.3087                 η mid → 5D improves
+            a₁   0.244   0.624  0.0696                 η mid → 5D improves
+          π2π⁰   0.423   0.516  0.1195                 η mid → 5D improves
+         other   0.074   0.079  0.1220                 η mid → 5D improves
+
+        e-μ cross-confusion:
+          1D: P(μ|e)=0.000, P(e|μ)=0.467  (total=0.467)
+          5D: P(μ|e)=0.001, P(e|μ)=0.003  (total=0.004)
+
+        Bayes-optimal ceiling (theoretical max for 1D):
+            Ch   Bayes  NN(1D)  NN(5D)          Gap
+             e   0.424   0.514   0.907 near ceiling
+             μ   0.000   0.000   0.945 ceiling = 0%
+             π   0.998   0.960   0.928 near ceiling
+             ρ   0.777   0.792   0.866 near ceiling
+            a₁   0.403   0.244   0.624 NN underperforms
+          π2π⁰   0.280   0.423   0.516 near ceiling
+         other   0.197   0.074   0.079 NN underperforms
+         Total   0.464   0.467   0.761
+
+        corr(η, NN_1D_accuracy) = 0.77
+        corr(η, Bayes_accuracy) = 0.84
+
+    (b) BR estimation (15 MC trials, N=1e+04):
+            Ch       θ  σ_hist    σ_NN  σ_CRB1D  σ_CRB5D   Pred    Obs
+             e  0.1782  0.0091  0.0039  0.16241  0.00687  23.6×  45.9×
+             μ  0.1739  0.0000  0.0035  0.16256  0.00681  23.9×  22.9×
+             π  0.1082  0.0030  0.0032  0.00337  0.00393   0.9×   3.5×
+             ρ  0.2549  0.0000  0.0049  0.01480  0.01407   1.1×   3.2×
+            a₁  0.0899  0.0188  0.0037  0.02084  0.02464   0.8×  11.9×
+          π2π⁰  0.0926  0.0149  0.0034  0.01796  0.02141   0.8×  24.6×
+         other  0.1023  0.0206  0.0015  0.02102  0.02402   0.9×   0.7×
+
+    (c) CDMA Receiver Taxonomy:
+    ┌────────────────────────────┬────────────────────────────┬──────────────┐
+    │ CDMA Receiver               │ Physics Equivalent         │ Bound        │
+    ├────────────────────────────┼────────────────────────────┼──────────────┤
+    │ Matched filter              │ 1D histogram fit           │ CRB(1D)      │
+    │ Decorrelating detector      │ R⁻¹ template fit           │ CRB(1D)      │
+    │ MMSE linear receiver        │ Regularized template fit   │ ≤ CRB(1D)    │
+    │ NN single-user detector     │ 1D NN classifier           │ ~ CRB(1D)    │
+    │ NN multiuser receiver       │ Multi-feature NN           │ → CRB(5D)    │
+    │ Fisher-opt (INFERNO/IMNN)   │ Fisher-trained NN          │ → CRB(5D)*   │
+    └────────────────────────────┴────────────────────────────┴──────────────┘
+
+    Qualitative interpretation:
+      The histogram template fit is a MATCHED FILTER: it correlates
+      the observed spectrum with each template (spreading code) and
+      extracts branching ratios. It suffers from MAI — channels with
+      similar templates (e/μ) interfere, inflating estimation variance.
+
+      Adding detector features (PID, tracks, π⁰ count) is equivalent
+      to WIDEBAND CDMA: more spreading dimensions resolve previously
+      aliased users. The multi-feature NN acts as a nonlinear MMSE
+      receiver that approaches the multi-dimensional CRB.
+
+      INFERNO/IMNN methods explicitly train NNs to maximize Fisher
+      information — they are FISHER-OPTIMAL SUMMARY CONSTRUCTORS.
+      In nuisance-free settings, this aligns with Bayes-optimal
+      classification. General optimality is not proven.
+      The CRB ratio provides a heuristic scale for achievable gain:
+        gain_k ~ σ_1D(k) / σ_5D(k) = √[CRB_1D / CRB_5D]
+
+      The NN does NOT beat the CRB. What improves is WHICH CRB:
+      going from 1D to multi-D lowers the bound because the FIM gains
+      rank (aliased eigenvalues become non-degenerate). The NN is the
+      practical tool to approach this tighter bound.
+
+  Checks:
+    Blind NMF: K_best within ±3 of 7: ✓
+    NMF mean recovery < 1.5: ✓
+    NMF ≥2 channels with error < 1.0: ✓
+    Residual: peak >5σ near 500 MeV: ✓
+    LR scan: mass within 100 MeV: ✓
+    LR scan: significance >5σ: ✓
+    Multi-feature NN > 1D NN accuracy: ✓
+    NN breaks e-μ aliasing (5D recall > 0.8): ✓
+    1D e-μ confused (cross-confusion > 0.3): ✓
+    5D resolves e-μ (cross-confusion < 0.1): ✓
+    η predicts 1D accuracy (r > 0.5): ✓
+    Bayes μ ceiling = 0% in 1D: ✓
+
+  P8 PASSED
+
+============================================================
+P9: Aliasing as Eigenvalue Collapse
+============================================================
+
+  (a) R eigenvalue spectrum (1D visible mass):
+      λ_1 = 3.560133
+      λ_2 = 1.981330
+      λ_3 = 0.999661
+      λ_4 = 0.285125
+      λ_5 = 0.129797
+      λ_6 = 0.042422
+      λ_7 = 0.001530 ← aliased
+
+      PR(R) = 2.768 → ~3 effective channels (of 7)
+
+      Aliased direction (λ_7 eigenvector):
+             e: +0.7061 ████████████████████████████
+             μ: -0.7081 ████████████████████████████
+             π: -0.0026 
+             ρ: +0.0021 
+            a₁: -0.0013 
+          π2π⁰: -0.0005 
+         other: +0.0017 
+      → λ_min eigenvector is 100.0% concentrated on (e, μ)
+      Framework discovers e-μ aliasing from eigenvalue analysis alone
+
+  (b) PID de-aliasing (eigenvalue lift):
+          i        λ_1D       λ_PID        lift
+          1    3.560133    3.358149   -0.201984
+          2    1.981330    1.481509   -0.499822
+          3    0.999661    0.979556   -0.020105
+          4    0.285125    0.602749   +0.317624
+          5    0.129797    0.433364   +0.303567
+          6    0.042422    0.110208   +0.067785
+          7    0.001530    0.034465   +0.032935
+
+      λ_min: 0.001530 → 0.034465 (23× lift)
+      PR(R): 2.768 → 3.268 (+0.499 effective channels)
+
+  (c) Next-most-aliased direction (λ_6 eigenvector):
+             ρ: -0.1551
+            a₁: -0.7736
+          π2π⁰: +0.4487
+         other: +0.4185
+      → Broad hadronic channels (a₁, π2π⁰, other) partially alias
+
+  (d) Data-driven validation (NMF from Poisson data):
+      NMF template matching quality: 0.373
+      PR(R_NMF) = 2.890 (true: 2.768)
+      λ_min(NMF) = 0.004833 (true: 0.001530)
+      NMF λ_min direction: (π, π2π⁰) ✗
+
+  Checks:
+    λ_min < 0.01 (aliasing exists): ✓
+    Aliased direction is e-μ: ✓
+    e-μ concentration > 99%: ✓
+    PID lifts λ_min > 10×: ✓
+    PR increases with PID: ✓
+    NMF: PR within 50% of true: ✓
+
+  P9 PASSED
+
+============================================================
+SUMMARY
+============================================================
+  P1: ✓
+  P2: ✓
+  P3: ✓
+  P4: ✓
+  P7: ✓
+  P8: ✓
+  P9: ✓
+
+
+=================================================================
+  Heavy-Ion PID: Prediction Validation Suite (P9-P16)
+=================================================================
+
+  Bethe-Bloch crossings (computed):
+    pi/K: 0.9961 GeV/c
+    K/p:  2.3736 GeV/c
+
+  Config: sigma=0.055, N=512.0
+  theta = [0.8475, 0.1186, 0.0339]
+
+-----------------------------------------------------------------
+  P9: Constrained CRB improvement
+-----------------------------------------------------------------
+  G_K near crossing: 0.0870, G_pi: 0.8057
+    All G_k >= 0: pass
+    G_K > 0 (constraint helps aliased K): pass
+    Dominant species benefits most (G_pi > G_K): pass
+
+-----------------------------------------------------------------
+  P10: Eigenvalue collapse at crossings
+-----------------------------------------------------------------
+  pi/K: ratio=6.57e-04, K/p: ratio=6.98e-05
+    Collapse at pi/K (ratio < 0.01): pass
+    Collapse at K/p (ratio < 0.01): pass
+    Crossings found: pass
+
+-----------------------------------------------------------------
+  P11: Kaon eta_K < 0.1 near crossing
+-----------------------------------------------------------------
+  eta_K at crossing: 0.001498, min in window: 0.001498
+    eta_K < 0.1 at crossing: pass
+    eta_K min < 0.01 in window: pass
+
+-----------------------------------------------------------------
+  P12: TOF eta improvement peaks near crossing
+-----------------------------------------------------------------
+  Peak at 2.367 GeV/c (near K/p), 24764x improvement
+    Peak within 0.3 GeV/c of a crossing: pass
+    Improvement > 10x: pass
+
+-----------------------------------------------------------------
+  P13: TOF increases kaon info at crossing
+-----------------------------------------------------------------
+  Fisher ratio: 9.1x, eta improvement: 633x
+    Fisher ratio > 3: pass
+    eta_K improves > 100x: pass
+
+-----------------------------------------------------------------
+  P14: Central has better absolute precision
+-----------------------------------------------------------------
+  Running centrality sweep...
+  At p=1.50: CRB_K central=4.40e-04, periph=7.39e-03
+  Precision: 16.8x better in central
+    CRB_K(central) < CRB_K(peripheral): pass
+
+-----------------------------------------------------------------
+  P15: Valley deepens with centrality
+-----------------------------------------------------------------
+  eta_K valley: central=0.000907, peripheral=0.001818
+    Valley exists (eta_K < 0.1): pass
+    Valley deeper in central: pass
+
+-----------------------------------------------------------------
+  P16: Fano bound at crossing
+-----------------------------------------------------------------
+  H(K)=0.7327, I(K;Y)=0.2094, Fano P_e>=0.0893 (8.9%)
+    P_e > 5% at crossing: pass
+    MI < H(K): pass
+    MI < 0.5*H(K) (significant loss): pass
+
+=================================================================
+  SUMMARY
+=================================================================
+  P9: 3/3 PASS
+  P10: 3/3 PASS
+  P11: 2/2 PASS
+  P12: 2/2 PASS
+  P13: 2/2 PASS
+  P14: 1/1 PASS
+  P15: 2/2 PASS
+  P16: 3/3 PASS
+
+  Total: 18/18
+  Crossings: pi/K=0.9961, K/p=2.3736
