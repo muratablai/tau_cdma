@@ -4,7 +4,7 @@ nmf.py — Blind Code Discovery via Poisson NMF
 
 Implements:
   - Poisson NMF (KL divergence) via sklearn
-  - Model selection (BIC) for number of channels K
+  - Model selection (penalized reconstruction error) for number of channels K
   - Template recovery error metrics
 """
 
@@ -69,10 +69,13 @@ def poisson_nmf(Y, K, n_iter=2000, init='nndsvda', random_state=42):
 
 
 def nmf_model_selection(Y, K_range=range(2, 12), n_iter=1000):
-    """Select optimal K using BIC-like criterion.
+    """Select optimal K using reconstruction-error-based criterion.
 
-    BIC = -2·log L + k·log(n)
-    For Poisson NMF: log L ≈ -D_KL(Y || Ŷ) (up to constants)
+    Uses a BIC-like penalized score where the data-fit term is the
+    KL reconstruction error from NMF (not the true Poisson log-likelihood).
+    This is a heuristic for model selection, not a statistically rigorous BIC.
+
+    Score = 2 · err · n + n_params · log(n)
 
     Parameters
     ----------
@@ -83,9 +86,9 @@ def nmf_model_selection(Y, K_range=range(2, 12), n_iter=1000):
     -------
     results : dict with:
         'K_values' : list of K tested
-        'bic' : list of BIC scores
+        'scores' : list of penalized reconstruction-error scores
         'errors' : list of reconstruction errors
-        'K_best' : K with lowest BIC
+        'K_best' : K with lowest score
     """
     if Y.ndim == 1:
         Y = Y.reshape(1, -1)
@@ -113,7 +116,8 @@ def nmf_model_selection(Y, K_range=range(2, 12), n_iter=1000):
 
     return {
         'K_values': K_values,
-        'bic': bics,
+        'scores': bics,
+        'bic': bics,  # backward compatibility alias
         'errors': errors,
         'K_best': K_best,
     }

@@ -192,58 +192,40 @@ def generate_paper1_figures(output_dir):
                      textcoords="offset points", xytext=(5, 5))
     ax3.set_xlabel('Multiuser efficiency η_k')
     ax3.set_ylabel('MAP accuracy [%]')
-    ax3.set_title(f'(c) η vs accuracy (r = 0.84)')
+    r_eta_acc = np.corrcoef(eta, acc_per)[0, 1]
+    ax3.set_title(f'(c) η vs accuracy (r = {r_eta_acc:.2f})')
     ax3.grid(True, alpha=0.3)
     
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, 'fig4_map_collapse.png'), dpi=150, bbox_inches='tight')
     plt.close()
     
-    # ── Fig 5: Correlation sign flip ──
-    print("  Fig 5: correlation sign flip")
-    M_vals = [5, 10, 20, 50, 100, 200, 500]
-    corrs = []
-    from scipy.optimize import minimize as sp_minimize
-    for M_test in M_vals:
-        config = {'M': M_test, 'm_range': (0, 1800), 'sigma_det': 20.0,
-                  'N': 1000000, 'background_density': 0.01,
-                  'theta': list(theta)}
+    # ── Fig 5: Resolution phase transition ──
+    print("  Fig 5: resolution phase transition")
+    sigma_vals = [5, 10, 15, 20, 30, 50, 80, 120, 150, 200, 300]
+    eta_sweep = {k: [] for k in range(7)}
+    for sig in sigma_vals:
+        config = {'M': 200, 'm_range': (0, 2000), 'sigma_det': float(sig),
+                  'N': 1000000, 'background_density': 0.01, 'theta': list(theta)}
         b_test = setup_benchmark(config)
-        A_t, th_t, N_t, bg_t = b_test['A'], b_test['theta'], b_test['N'], b_test['background']
-        lam = N_t * A_t @ th_t + bg_t
-        rng = np.random.default_rng(42)
-        theta_hats = []
-        for _ in range(50):
-            y = rng.poisson(lam)
-            def neg_ll(th):
-                th_full = np.append(th, 1 - th.sum())
-                if np.any(th_full < 0) or np.any(th_full > 1):
-                    return 1e12
-                mu = N_t * A_t @ th_full + bg_t
-                mu = np.maximum(mu, 1e-30)
-                return -np.sum(y * np.log(mu) - mu)
-            x0 = th_t[:-1] + rng.normal(0, 0.001, size=len(th_t)-1)
-            result = sp_minimize(neg_ll, x0, method='Nelder-Mead',
-                            options={'maxiter': 5000, 'xatol': 1e-8})
-            th_hat = np.append(result.x, 1 - result.x.sum())
-            theta_hats.append(th_hat)
-        theta_hats = np.array(theta_hats)
-        if theta_hats.shape[0] > 10:
-            corr_em = np.corrcoef(theta_hats[:, 0], theta_hats[:, 1])[0, 1]
-        else:
-            corr_em = 0
-        corrs.append(corr_em)
+        for k in range(7):
+            eta_sweep[k].append(b_test['eta'][k])
     
-    fig, ax = plt.subplots(figsize=(7, 4.5))
-    ax.plot(M_vals, corrs, 'bo-', linewidth=2, markersize=8)
-    ax.axhline(0, color='gray', ls='--', alpha=0.5)
-    ax.set_xlabel('Number of bins M')
-    ax.set_ylabel('corr(θ̂_e, θ̂_μ)')
-    ax.set_title('Correlation sign flip: e-μ estimators')
+    fig, ax = plt.subplots(figsize=(8, 5))
+    colors_res = ['red', 'blue', 'green', 'purple', 'orange', 'brown', 'gray']
+    for k in range(7):
+        ax.plot(sigma_vals, eta_sweep[k], 'o-', color=colors_res[k],
+                linewidth=2, markersize=6, label=labels[k])
+    ax.axvline(120, color='black', ls='--', alpha=0.5, label='π collapse (~120 MeV)')
+    ax.set_xlabel('Detector resolution σ [MeV]')
+    ax.set_ylabel('Multiuser efficiency η_k')
+    ax.set_title('Resolution phase transition: η_k vs σ')
     ax.set_xscale('log')
+    ax.set_ylim(-0.05, 1.05)
+    ax.legend(fontsize=8, ncol=2)
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'fig5_correlation_sign_flip.png'), dpi=150, bbox_inches='tight')
+    plt.savefig(os.path.join(output_dir, 'fig5_resolution_phase_transition.png'), dpi=150, bbox_inches='tight')
     plt.close()
     
     # ── Fig 6: Cascade bottleneck ──
@@ -253,31 +235,60 @@ def generate_paper1_figures(output_dir):
     stages = ['Stage 1\n(τ→a₁ν)', 'Stage 2\n(a₁→3π)']
     vals = [cas['I1'], cas['I2']]
     ratio = cas['I1'] / cas['I2']
-    ax.bar(stages, vals, color=['steelblue', 'coral'], width=0.5)
+    bars = ax.bar(stages, vals, color=['steelblue', 'coral'], width=0.5, edgecolor='black')
     ax.set_ylabel('Fisher information')
     ax.set_title(f'Cascade bottleneck: I₁/I₂ = {ratio:.1f}×')
     ax.ticklabel_format(axis='y', style='scientific', scilimits=(0,0))
+    ax.set_ylim(0, max(vals) * 1.15)
     ax.grid(True, alpha=0.3, axis='y')
+    # Value labels on bars
+    for bar, val in zip(bars, vals):
+        ax.text(bar.get_x() + bar.get_width()/2, val + max(vals)*0.02,
+                f'{val:.2e}', ha='center', va='bottom', fontsize=9)
+    # Bottleneck annotation
+    ax.annotate('BOTTLENECK', xy=(1, vals[1]),
+                xytext=(1.3, vals[1] * 1.08),
+                ha='center', fontsize=10, color='red', fontweight='bold',
+                arrowprops=dict(arrowstyle='->', color='red', lw=2))
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, 'fig6_cascade_bottleneck.png'), dpi=150, bbox_inches='tight')
     plt.close()
     
     # ── Fig 7: Receiver hierarchy ──
     print("  Fig 7: receiver hierarchy")
+    # Compute live MAP accuracy and Fano floor
+    mi_live = classification_mi(A, theta)
+    conf_live = bayes_confusion(A, theta)
+    map_acc = conf_live['overall'] * 100
+    fano_pct = mi_live['fano_bound'] * 100
+    
     fig, ax = plt.subplots(figsize=(7, 4.5))
-    methods = ['MAP\n(1D)', '1D NN', '5D NN']
-    accs = [46.4, 46.7, 76.1]
-    colors_rh = ['steelblue', 'steelblue', 'coral']
+    methods = ['MAP\n(1D mass)', 'MAP\n(mass+PID)']
+    # Compute mass+PID accuracy
+    pid_block_fig = np.zeros((3, 7))
+    pid_block_fig[0, 0] = 1.0; pid_block_fig[1, 1] = 1.0; pid_block_fig[2, 2:] = 1.0
+    for kk in range(7):
+        s = pid_block_fig[:, kk].sum()
+        if s > 0: pid_block_fig[:, kk] /= s
+    A_joint_fig = np.zeros((A.shape[0] * 3, 7))
+    for kk in range(7):
+        A_joint_fig[:, kk] = np.outer(A[:, kk], pid_block_fig[:, kk]).flatten()
+        A_joint_fig[:, kk] /= A_joint_fig[:, kk].sum()
+    conf_pid = bayes_confusion(A_joint_fig, theta)
+    pid_acc = conf_pid['overall'] * 100
+    
+    accs = [map_acc, pid_acc]
+    colors_rh = ['steelblue', 'coral']
     bars = ax.bar(methods, accs, color=colors_rh, width=0.5)
-    ax.axhline(33.1, color='red', ls='--', label='Fano floor (33.1%)', linewidth=1.5)
+    ax.axhline(fano_pct, color='red', ls='--', label=f'Fano floor ({fano_pct:.1f}%)', linewidth=1.5)
     ax.set_ylabel('Overall accuracy [%]')
-    ax.set_title('Receiver hierarchy')
+    ax.set_title('Receiver hierarchy: mass-only vs mass+PID')
     ax.set_ylim(0, 100)
     ax.legend()
     ax.grid(True, alpha=0.3, axis='y')
     for bar, acc in zip(bars, accs):
         ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 1,
-                f'{acc}%', ha='center', fontsize=10, fontweight='bold')
+                f'{acc:.1f}%', ha='center', fontsize=10, fontweight='bold')
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, 'fig7_receiver_hierarchy.png'), dpi=150, bbox_inches='tight')
     plt.close()

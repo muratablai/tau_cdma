@@ -6,7 +6,7 @@ Usage:
     python -m tau_cdma.validate_heavy_ion
 
 Predictions tested:
-  P9:  Constrained CRB < unconstrained; gain largest for aliased species
+  P9:  Constrained CRB < unconstrained; dominant species has largest gain (G_π > G_K)
   P10: Eigenvalue collapse at Bethe-Bloch crossing momenta
   P11: Kaon η_K < 0.1 near π/K crossing (TPC only)
   P12: TOF information gain peaks near crossing momenta

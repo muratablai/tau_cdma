@@ -22,7 +22,7 @@ The codebase has three layers, each building on the one below:
       spreading       Spreading factor analysis (SF = m/Gamma)
       simulate        Monte Carlo event generation
 
-    tau/            <- Layer 1: tau decay benchmark (P1-P9)
+    tau/            <- Layer 1: tau decay benchmark (P1-P4, P7-P8, eigenvalue collapse)
       templates       7-channel analytic templates (PDG 2024)
       ml_receiver     NN receiver hierarchy
       benchmark       Standard benchmark setup
@@ -33,7 +33,7 @@ The codebase has three layers, each building on the one below:
       centrality      ALICE centrality configs, measurability landscape
 
     validate/       <- Prediction validation suites
-      tau_predictions         P1-P9 (46 checks)
+      tau_predictions         P1-P4, P7-P8, eigenvalue collapse
       heavy_ion_predictions   P9-P16 (18 checks)
 
 Extending
@@ -58,4 +58,4 @@ Corrections (C1-C7, C8-C11)
   C10: TOF resolution = 60 ps (Run 2 Pb-Pb), was 80 ps (Run 1)
   C11: TOF path length = 3.8 m (ALICE standard), was 3.7 m
 """
-__version__ = "0.4.9"
+__version__ = "0.5.0"

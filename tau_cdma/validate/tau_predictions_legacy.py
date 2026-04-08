@@ -6,8 +6,8 @@ Usage:
     python -m tau_cdma.validate [--quick]
 
 Predictions tested:
-  P1: η ordering + Shannon classification (identifiability landscape)
-  P2: Resolution degradation — Monte Carlo validated template distances
+  P1: η ordering + Shannon classification (Bayes μ=0% theorem)
+  P2: Aliasing order — Monte Carlo validated template distances
   P3: Geometric vs random erasure — sweep over access fractions
   P4: Cascade bottleneck at a₁→3π
   P7: Optimal binning M_opt ∝ SF_k — Fisher saturation curves
@@ -28,9 +28,13 @@ from scipy.optimize import minimize
 def validate_p1(bench, verbose=True):
     """P1: Multiuser efficiency ordering — observable dependence.
 
-    v0.5.0 prediction: η landscape from isolated (e) to severely degraded (a₁).
-      1D m_vis:   η_e ≈ 1 ≫ η_μ ≈ η_π ≈ 0.95 > η_ρ ≈ 0.81 > η_π2π⁰ > η_other > η_a₁ ≈ 0.11
-      With PID:   hadronic cluster still degraded; μ-π near-far resolved
+    v4.5 core prediction: η ordering reshuffles when the observable changes.
+      1D m_vis:   η_π ≫ η_ρ > η_a₁ > η_e ≈ η_μ ≈ 0
+      With PID:   η_e, η_μ jump to high values; π remains high
+
+    We demonstrate this by computing η under two scenarios:
+      (a) 1D visible mass only (M=200 bins)
+      (b) m_vis + particle ID (3-category PID: e / μ / hadron)
     """
     from tau_cdma.core.fisher import poisson_fim
     from tau_cdma.core.interference import interference_matrix, multiuser_efficiency
@@ -52,46 +56,59 @@ def validate_p1(bench, verbose=True):
             print(f"      η[{labels[k]:>5s}] = {eta_1d[k]:.4f}")
 
     # --- With PID + n_trk: augment template matrix ---
-    # PROPER JOINT PRODUCT-SPACE FUSION BENCHMARK
-    # Constructs a joint template matrix A_joint = A_mass ⊗ A_pid where:
-    #   A_mass: M×K visible-mass templates (from benchmark)
-    #   A_pid: 3×K particle-identification templates (e/μ/hadron categories)
-    # The joint template A_joint has M×3 bins, modeling conditional independence
-    # of mass and PID measurements. This is a proper joint likelihood, not
-    # a weighted surrogate.
+    # SYNTHETIC WEIGHTED FUSION BENCHMARK
+    # This constructs a multi-observable template by stacking mass, track
+    # multiplicity, and PID blocks with ad hoc weights (0.5, 0.2, 0.3).
+    # This is NOT a detector-derived joint likelihood over a true combined
+    # observation space. It is a synthetic benchmark demonstrating that the
+    # framework's η_k ordering changes when observables are added, and that
+    # the Fisher machinery handles multi-observable fusion correctly.
     #
-    # PID model (idealized lepton/hadron separation):
-    #   e → PID=e (100%), μ → PID=μ (100%), hadronic → PID=had (100%)
+    # n_trk (track multiplicity):
+    #   e, μ, π, ρ(→ππ⁰), π2π⁰: 1-prong (1 charged track)
+    #   a₁(→3π): 3-prong (3 charged tracks)
+    #   other: ~70% 1-prong, ~30% 3-prong (PDG τ topology fractions)
+    #
+    # PID (particle identification):
+    #   e → PID=e, μ → PID=μ, hadronic → PID=had
     
     A_1d = bench['A']  # (M, 7)
     M = A_1d.shape[0]
 
-    # PID observable: 3 categories (e, μ, hadron)
+    # n_trk observable: 2 bins (1-prong, 3-prong)
+    ntrk_block = np.zeros((2, K))
+    ntrk_block[0, :] = [1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.7]  # 1-prong
+    ntrk_block[1, :] = [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.3]  # 3-prong
+
+    # PID observable: 3 bins (e, μ, hadron)
     pid_block = np.zeros((3, K))
     pid_block[0, 0] = 1.0   # e → PID=e
     pid_block[1, 1] = 1.0   # μ → PID=μ
     pid_block[2, 2:] = 1.0  # all hadronic → PID=had
-    # Normalize columns
-    for k in range(K):
-        s = pid_block[:, k].sum()
-        if s > 0:
-            pid_block[:, k] /= s
 
-    # Joint template: outer product (mass ⊗ PID)
-    M_joint = M * 3
-    A_pid = np.zeros((M_joint, K))
-    for k in range(K):
-        A_pid[:, k] = np.outer(A_1d[:, k], pid_block[:, k]).flatten()
-    # Renormalize columns
-    for k in range(K):
-        s = A_pid[:, k].sum()
-        if s > 0:
-            A_pid[:, k] /= s
+    # Combine: (m_vis, n_trk, PID) with relative weights
+    mass_weight = 0.5
+    ntrk_weight = 0.2
+    pid_weight = 0.3
+
+    # Normalize each block's columns to sum to 1, then weight
+    ntrk_norm = ntrk_block / np.maximum(ntrk_block.sum(axis=0, keepdims=True), 1e-30)
+    pid_norm = pid_block / np.maximum(pid_block.sum(axis=0, keepdims=True), 1e-30)
+    
+    A_aug = np.vstack([
+        A_1d * mass_weight,
+        ntrk_norm * ntrk_weight,
+        pid_norm * pid_weight,
+    ])
+    # Re-normalize columns to sum to 1
+    col_sums = A_aug.sum(axis=0, keepdims=True)
+    A_aug = A_aug / np.maximum(col_sums, 1e-30)
+    A_pid = A_aug  # keep name for backward compatibility
 
     theta = bench['theta']
     N = bench['N']
-    M_aug = M_joint
-    bg_aug = np.full(M_joint, 1e-6)
+    M_aug = A_pid.shape[0]
+    bg_aug = np.concatenate([bench['background'], 0.001 * np.ones(5)])  # 2 ntrk + 3 PID bins
 
     F_pid = poisson_fim(A_pid, theta, N, bg_aug)
     R_pid = interference_matrix(A_pid, theta, N, bg_aug)
@@ -103,7 +120,8 @@ def validate_p1(bench, verbose=True):
     crb_pid = compute_crb(F_pid, regularize=True)
 
     if verbose:
-        print(f"\n  (b) Joint mass × PID ({M}×3={M_aug} bins, product-space model):")
+        print(f"\n  (b) (m_vis, n_trk, PID) ({M}+2+3={M_aug} bins, "
+              f"weights: mass={mass_weight}, ntrk={ntrk_weight}, PID={pid_weight}):")
         for k in range(K):
             arrow = " ↑↑↑" if eta_pid[k] > 10 * eta_1d[k] else ""
             print(f"      η[{labels[k]:>5s}] = {eta_pid[k]:.4f}{arrow}")
@@ -154,34 +172,33 @@ def validate_p1(bench, verbose=True):
         print(f"      {'Total':>6s}  {bc_1d['overall']:>8.1%}  "
               f"{bc_pid['overall']:>8.1%}")
         print()
-        print(f"      Near-far effect: μ ({bc_1d['accuracy'][1]:.0%}) > π ({bc_1d['accuracy'][2]:.0%})")
-        print(f"      BR_μ/BR_π = {theta[1]/theta[2]:.2f} — prior advantage drives asymmetric confusion.")
-        print(f"      25.8% of π misclassified as μ, only 4.9% reverse.")
-        print(f"      PID rescues π: {bc_1d['accuracy'][2]:.0%} → {bc_pid['accuracy'][2]:.0%}")
+        print(f"      μ = {bc_1d['accuracy'][1]:.0%} accuracy is a theorem: θ_e > θ_μ with")
+        print(f"      identical templates → P(μ|m) < P(e|m) for every mass bin.")
+        print(f"      Even the perfect classifier never predicts μ.")
+        print(f"      PID breaks this: μ accuracy → {bc_pid['accuracy'][1]:.0%}")
 
-    # Checks — aligned with v0.5.0 visible-mass physics (prediction_criteria.py)
+    # Checks — aligned with formalism criteria (prediction_criteria.py)
     from tau_cdma.validate.prediction_criteria import P1_CRITERIA as C
     
-    eta_mu_pi_rel = abs(eta_1d[1] - eta_1d[2]) / max(eta_1d[1], eta_1d[2], 1e-30)
-    a1_is_lowest = all(eta_1d[4] <= eta_1d[k] + 1e-10 for k in range(K))
+    # Augmented (m_vis, n_trk, PID) space checks
+    eta_12_rel = abs(eta_pid[0] - eta_pid[1]) / max(eta_pid[0], eta_pid[1], 1e-30)
+    eta_56_rel = abs(eta_pid[4] - eta_pid[5]) / max(eta_pid[4], eta_pid[5], 1e-30)
     
     checks = {
-        # Electron isolated (delta at 0.5 MeV, far from everything)
-        f'η_e > {C["eta_e_min"]} (isolated)': eta_1d[0] > C['eta_e_min'],
-        # μ-π near-far pair: similar η
-        f'|η_μ-η_π|/max < {C["eta_mu_pi_rel_diff_max"]}': eta_mu_pi_rel < C['eta_mu_pi_rel_diff_max'],
-        f'η_μ > {C["eta_mu_min"]}': eta_1d[1] > C['eta_mu_min'],
-        f'η_π > {C["eta_pi_min"]}': eta_1d[2] > C['eta_pi_min'],
-        # a₁ most degraded (hadronic confusion)
-        f'η_a₁ < {C["eta_a1_max"]}': eta_1d[4] < C['eta_a1_max'],
-        'η_a₁ is lowest': a1_is_lowest,
-        # Near-far: μ recall > π recall
-        'μ recall > π recall (near-far)': bc_1d['accuracy'][1] > bc_1d['accuracy'][2],
-        # No zero-recall at default resolution
-        'No zero-recall species': all(bc_1d['accuracy'][k] > 0 for k in range(K)),
-        # Shannon
-        f'MI > {C["mi_min"]} bits': mi_1d['MI'] > C['mi_min'],
-        f'Fano < {C["fano_max"]*100:.0f}%': mi_1d['fano_bound'] < C['fano_max'],
+        # Augmented space ordering (formalism exact criterion)
+        f'|η₁-η₂|/max < {C["eta_12_rel_diff_max"]} (e≈μ)': eta_12_rel < C['eta_12_rel_diff_max'],
+        'η₃ > η₁ (π dominates augmented)': eta_pid[2] > eta_pid[0],
+        'η₃ > η₄ > η₅ (hadronic ordering)': eta_pid[2] > eta_pid[3] > eta_pid[4],
+        f'|η₅-η₆|/max < {C["eta_56_rel_diff_max"]} (a₁≈π2π⁰)': eta_56_rel < C['eta_56_rel_diff_max'],
+        # 1D corollary checks
+        f'π dominates 1D (η_π > {C["pi_dominates_1d_min"]})': eta_1d[2] > C['pi_dominates_1d_min'],
+        f'e,μ aliased 1D (R_eμ > {C["R_emu_min"]})': R_1d[0, 1] > C['R_emu_min'],
+        f'e,μ near zero 1D (η < {C["leptonic_aliased_1d_max"]})': (
+            eta_1d[0] < C['leptonic_aliased_1d_max'] and eta_1d[1] < C['leptonic_aliased_1d_max']
+        ),
+        # Shannon checks (from formalism)
+        f'Bayes μ = 0% in 1D (acc < {C["mu_accuracy_1d_max"]})': bc_1d['accuracy'][1] < C['mu_accuracy_1d_max'],
+        f'PID rescues μ (acc > {C["mu_accuracy_pid_min"]})': bc_pid['accuracy'][1] > C['mu_accuracy_pid_min'],
     }
 
     passed = all(checks.values())
@@ -267,24 +284,19 @@ def validate_p2(bench, verbose=True):
             print(f"  {r['M']:>5d}  {D[0,1]:>8.4f}  {D[0,2]:>8.4f}  {D[3,4]:>8.4f}  {D[4,5]:>8.4f}")
 
     # --- Part B: Monte Carlo validation ---
-    # Key test: most aliased hadronic pair shows strong negative correlation
-    # (a₁ and other trade off against each other in the low-eigenvalue direction)
-    # At all M: fitter sees anti-correlated trade-off → corr ≈ -1
+    # Key test: e-μ correlation sign flips from +1 (degenerate) to -1 (trade-off)
+    # At low M: fitter can't separate e/μ → they move together → corr ≈ +1
+    # At high M: partially separable → anti-correlated trade-off → corr ≈ -1
+    # The σ(e+μ) sum is always small → only the split is uncertain
     mc_M_values = [3, 5, 10, 20, 50, 100, 200]
     n_mc = 200
     rng = np.random.default_rng(42)
 
-    # Find the most aliased pair from eigenvalue analysis
-    _, evecs = np.linalg.eigh(bench['R'])
-    v_min = np.abs(evecs[:, 0])
-    top2 = np.argsort(v_min)[-2:]
-    ai, aj = sorted(top2)  # most aliased pair indices
-
     if verbose:
         print(f"\n  (b) Monte Carlo validation ({n_mc} simulations per M):")
-        print(f"      Hadronic aliasing: {labels[ai]}-{labels[aj]} correlation")
-        print(f"      {'M':>5s}  {'corr':>10s}  {'σ_'+labels[ai][:3]:>10s}  {'σ_'+labels[aj][:3]:>10s}  "
-              f"{'Phase':>12s}")
+        print(f"      e-μ aliasing signature: correlation sign flip")
+        print(f"      {'M':>5s}  {'corr(e,μ)':>10s}  {'σ_e':>10s}  {'σ_μ':>10s}  "
+              f"{'σ(e+μ)':>10s}  {'Phase':>12s}")
 
     mc_results = {}
     for M_mc in mc_M_values:
@@ -311,26 +323,33 @@ def validate_p2(bench, verbose=True):
 
         mc_var = np.var(theta_fits, axis=0)
         mc_corr = np.corrcoef(theta_fits.T)
-        sigma_sum = np.std(theta_fits[:, ai] + theta_fits[:, aj])
+        sigma_sum = np.std(theta_fits[:, 0] + theta_fits[:, 1])
 
         mc_results[M_mc] = {
             'crb': crb_mc, 'mc_var': mc_var, 'mc_corr': mc_corr,
-            'sigma_ai': np.sqrt(mc_var[ai]), 'sigma_aj': np.sqrt(mc_var[aj]),
+            'sigma_e': np.sqrt(mc_var[0]), 'sigma_mu': np.sqrt(mc_var[1]),
             'sigma_sum': sigma_sum,
         }
 
         if verbose:
-            corr_pair = mc_corr[ai, aj]
-            phase = "strong trade-off" if corr_pair < -0.5 else ("weak" if corr_pair > 0.5 else "moderate")
-            print(f"      {M_mc:>5d}  {corr_pair:>+10.3f}  {np.sqrt(mc_var[ai]):>10.5f}  "
-                  f"{np.sqrt(mc_var[aj]):>10.5f}  {phase:>12s}")
+            corr_emu = mc_corr[0, 1]
+            phase = "degenerate" if corr_emu > 0.5 else ("trade-off" if corr_emu < -0.5 else "transition")
+            print(f"      {M_mc:>5d}  {corr_emu:>+10.3f}  {np.sqrt(mc_var[0]):>10.5f}  "
+                  f"{np.sqrt(mc_var[1]):>10.5f}  {sigma_sum:>10.5f}  {phase:>12s}")
 
-    # Check that the aliased pair is strongly negatively correlated at M=200
-    corr_at_200 = mc_results.get(200, {}).get('mc_corr', np.eye(K))[ai, aj]
+    # Find the transition M where correlation flips sign
+    sign_flip_M = None
+    prev_corr = mc_results[mc_M_values[0]]['mc_corr'][0, 1]
+    for M_mc in mc_M_values[1:]:
+        curr_corr = mc_results[M_mc]['mc_corr'][0, 1]
+        if prev_corr > 0 and curr_corr < 0:
+            sign_flip_M = M_mc
+            break
+        prev_corr = curr_corr
 
-    if verbose:
-        print(f"\n      Most aliased pair ({labels[ai]}-{labels[aj]}) correlation at M=200: {corr_at_200:+.3f}")
-        print(f"      (strong negative = hadronic trade-off confirmed)")
+    if verbose and sign_flip_M:
+        print(f"\n      Correlation sign flip at M={sign_flip_M}")
+        print(f"      (e-μ transition from degenerate to partially separable)")
 
     # CRB saturation efficiency: σ_MC / σ_CRB at M=200
     M_eff = 200
@@ -347,30 +366,28 @@ def validate_p2(bench, verbose=True):
                 print(f"        {labels[k]:>6s}: {eff_str}")
             print(f"      (e,μ < 1.0 at M=200 because aliasing inflates CRB)")
 
-    # Checks — v0.5.0: hadronic aliasing dominates at fine binning
+    # Checks — aligned with formalism criteria (prediction_criteria.py)
     from tau_cdma.validate.prediction_criteria import P2_CRITERIA as C
-
-    # At fine binning (M=200), check the hadronic pair structure
-    finest = max(results, key=lambda r: r['M'])
-    D_fine = finest['distances_per_event']
-    hadronic_indices = {3, 4, 5, 6}
-    
-    # Find most aliased hadronic pair at fine binning
-    min_d2_had = np.inf
-    for i in hadronic_indices:
-        for j in hadronic_indices:
-            if j > i and D_fine[i, j] < min_d2_had:
-                min_d2_had = D_fine[i, j]
-
-    # e-μ should be well-separated at fine binning
-    emu_well_separated = D_fine[0, 1] > 0.5
+    coarsest = min(results, key=lambda r: r['M'])
+    D = coarsest['distances_per_event']
 
     checks = {
-        'Hadronic pairs overlap at fine M': min_d2_had < 1.5,
-        'e-μ well-separated at fine M': emu_well_separated,
-        '(a₁,π2π⁰) more aliased than (ρ,a₁)': D_fine[4, 5] < D_fine[3, 4],
-        # M* ordering (hadronic pairs first at fine binning)
-        'M* ordering': ordering_ok,
+        '(e,μ) most aliased (d²≈0)': D[0, 1] < 0.01,
+        '(a₁,π2π⁰) more aliased than (ρ,a₁)': D[4, 5] < D[3, 4],
+        '(e,μ) more aliased than (e,π)': D[0, 1] < D[0, 2],
+        'π most distinct (max d² from all)': all(D[2, k] > 1.0 for k in range(K) if k != 2),
+        # M* ordering (formalism criterion)
+        'M* ordering: M*(a₁,π2π⁰) ≤ ... ≤ M*(e,μ)': ordering_ok,
+        # MC: e-μ degenerate at M=3
+        f'MC: e-μ degenerate at M=3 (corr>{C["mc_degenerate_corr_min"]})': (
+            mc_results[3]['mc_corr'][0, 1] > C['mc_degenerate_corr_min']
+        ),
+        # MC: e-μ anti-correlated at M≥200
+        f'MC: e-μ trade-off at M=200 (corr<{C["mc_tradeoff_corr_max"]})': (
+            mc_results[200]['mc_corr'][0, 1] < C['mc_tradeoff_corr_max']
+        ),
+        'MC: correlation sign flip exists': sign_flip_M is not None,
+        'MC: σ(e+μ) < σ_e at M=200': mc_results[200]['sigma_sum'] < mc_results[200]['sigma_e'],
     }
 
     passed = all(checks.values())
@@ -594,12 +611,11 @@ def validate_p4(bench, verbose=True):
         print(f"    {'τ→a₁ν→3πν':>20s}  {G_A1:>8.1f}  {SF_a1:>6.1f}  {result['I1']:>10.2e}")
         print(f"    → a₁ 2.8× broader than ρ → more information lost in cascade")
 
-    from tau_cdma.validate.prediction_criteria import P4_CRITERIA as C4
     checks = {
         'Bottleneck at stage 2 (broad a₁)': result['bottleneck'] == 'stage2',
         'I₁ > I₂ (stage 2 is limiting)': result['I1'] > result['I2'],
         'DPI: I₂ < I₁ (cascade info ≤ min)': result['I2'] < result['I1'],
-        f'Bottleneck ratio > {C4["bottleneck_min"]}': ratio > C4['bottleneck_min'],
+        'Bottleneck ratio > 5': ratio > 5,
     }
     passed = all(checks.values())
 
@@ -733,10 +749,14 @@ def validate_p7(bench, verbose=True):
             print(f"    F_{labels[k]:>4s} peaks at M={pk}, drops to {drop:.3f}× at M=1000")
 
     checks = {
-        'SF-Mopt correlation non-negative': not np.isnan(corr) and corr >= 0,
-        'Most channels >80% by M=200': sum(
-            frac[M_values.index(200), k] > 0.80 for k in range(K)
-        ) >= 5,
+        'SF-Mopt positive correlation (resonance channels)': not np.isnan(corr) and corr > 0,
+        f'All channels >90% by M={C["all_saturated_by_M"]}': all(
+            frac[M_values.index(C['all_saturated_by_M']), k] > C['saturation_threshold']
+            for k in range(K)
+        ),
+        f'π saturates early (>{C["pi_saturation_min"]*100:.0f}% at M={C["pi_saturates_early_M"]})': (
+            frac[M_values.index(C['pi_saturates_early_M']), 2] > C['pi_saturation_min']
+        ),
         'Peak M finite (not at boundary)': all(pk < 1000 for pk in peak_M),
         'Wide channels saturate before narrow (M_opt(a₁) ≤ M_opt(ρ))': M_opt[4] <= M_opt[3],
     }
@@ -801,7 +821,7 @@ def validate_p8(bench, verbose=True, quick=False):
 
     if verbose:
         print(f"    Data: {n_exp} experiments × {A.shape[0]} bins, N={N_nmf:.0e}")
-        print(f"    K_best (penalized recon. error) = {ms['K_best']}")
+        print(f"    K_best (BIC) = {ms['K_best']}")
         print(f"    Recovery at K=7 (mean error): {recovery['mean']:.3f}")
         for k in range(K):
             print(f"      {labels[k]:>6s}: {recovery['per_channel'][k]:.3f}")
@@ -1006,10 +1026,14 @@ def validate_p9(bench=None, verbose=True):
       - How many independent measurements the data supports (PR)
 
     The framework PREDICTS:
-      (a) λ_min is small, with eigenvector along hadronic cluster (a₁/other)
-      (b) Adding PID does NOT lift the hadronic aliasing (it's mass-driven)
-      (c) Participation ratio PR(R) < K in 1D
+      (a) λ_min ≈ 0, with eigenvector along e-μ direction
+      (b) Adding PID lifts λ_min (de-aliasing)
+      (c) Participation ratio PR(R) < K in 1D, increases with PID
       (d) Blind NMF from data recovers consistent structure
+
+    This is NOT circular: templates come from physics (PDG + detector),
+    eigenvalue analysis discovers aliasing without knowing which channels
+    are aliased. The PID lift is a falsifiable prediction.
     """
     from tau_cdma.tau.templates import TauTemplates, TAU_BR
     from tau_cdma.core.fisher import poisson_fim
@@ -1068,26 +1092,20 @@ def validate_p9(bench=None, verbose=True):
             print(f"        {labels[k]:>6s}: {sign}{abs(v_min[k]):.4f} {bar}")
         print(f"      → λ_min eigenvector is {v_min_concentration:.1%} concentrated"
               f" on ({labels[aliased_pair[0]]}, {labels[aliased_pair[1]]})")
-        print(f"      Framework discovers hadronic confusion cluster from eigenvalue analysis alone")
+        print(f"      Framework discovers e-μ aliasing from eigenvalue analysis alone")
 
-    # === (b) PID lifts degeneracy (proper joint product-space) ===
+    # === (b) PID lifts degeneracy ===
+    pid_weight = 0.3
     pid_block = np.zeros((3, K))
     pid_block[0, 0] = 1.0
     pid_block[1, 1] = 1.0
     pid_block[2, 2:] = 1.0
-    for kk in range(K):
-        s = pid_block[:, kk].sum()
-        if s > 0:
-            pid_block[:, kk] /= s
-    M_joint = M * 3
-    A_pid = np.zeros((M_joint, K))
-    for kk in range(K):
-        A_pid[:, kk] = np.outer(A[:, kk], pid_block[:, kk]).flatten()
-    for kk in range(K):
-        s = A_pid[:, kk].sum()
-        if s > 0:
-            A_pid[:, kk] /= s
-    bg_aug = np.full(M_joint, 1e-6)
+    A_pid = np.vstack([A * (1 - pid_weight),
+                       pid_block * pid_weight / np.maximum(
+                           pid_block.sum(axis=0, keepdims=True), 1e-30)])
+    col_sums = A_pid.sum(axis=0, keepdims=True)
+    A_pid = A_pid / np.maximum(col_sums, 1e-30)
+    bg_aug = np.concatenate([bg, 0.001 * np.ones(3)])
 
     R_pid = interference_matrix(A_pid, theta, N, bg_aug)
     eigvals_pid = np.sort(np.linalg.eigvalsh(R_pid))[::-1]
@@ -1140,33 +1158,27 @@ def validate_p9(bench=None, verbose=True):
     pr_nmf = (np.sum(eigvals_nmf))**2 / np.sum(eigvals_nmf**2)
 
     # Check if NMF also finds that the smallest eigenvalue direction
-    # is dominated by hadronic channels (a₁, other, π2π⁰)
+    # is dominated by e/μ
     _, evecs_nmf = np.linalg.eigh(R_nmf)
     v_min_nmf = evecs_nmf[:, 0]  # smallest eigenvalue
     top2_nmf = np.argsort(np.abs(v_min_nmf))[-2:]
-    hadronic_set = {3, 4, 5, 6}
-    nmf_finds_hadronic = (top2_nmf[0] in hadronic_set and top2_nmf[1] in hadronic_set)
+    nmf_finds_emu = set(top2_nmf) == {0, 1}
 
     if verbose:
         print(f"      NMF template matching quality: {match_quality:.3f}")
         print(f"      PR(R_NMF) = {pr_nmf:.3f} (true: {pr_1d:.3f})")
         print(f"      λ_min(NMF) = {eigvals_nmf[-1]:.6f} (true: {eigvals[-1]:.6f})")
         top2_labels = f"({labels[top2_nmf[0]]}, {labels[top2_nmf[1]]})"
-        found = "✓" if nmf_finds_hadronic else "✗"
+        found = "✓" if nmf_finds_emu else "✗"
         print(f"      NMF λ_min direction: {top2_labels} {found}")
 
-    # === Checks === (v0.5.0: hadronic cluster, not e-μ)
-    from tau_cdma.validate.prediction_criteria import P9_CRITERIA as C
-    hadronic_concentration = sum(v_min[k]**2 for k in hadronic_set) / sum(v_min**2)
-    aliased_is_hadronic = (aliased_pair[0] in hadronic_set and aliased_pair[1] in hadronic_set)
-
+    # === Checks ===
     checks = {
-        f'λ_min < {C["lambda_min_max"]} (partial aliasing)': eigvals[-1] < C['lambda_min_max'],
-        f'λ_min > {C["lambda_min_min"]} (not fully collapsed)': eigvals[-1] > C['lambda_min_min'],
-        'Aliased direction is hadronic': aliased_is_hadronic,
-        f'Hadronic concentration > {C["hadronic_concentration_min"]:.0%}': hadronic_concentration > C['hadronic_concentration_min'],
-        f'κ(R) < {C["kappa_max"]}': eigvals[0] / eigvals[-1] < C['kappa_max'],
-        f'PR > {C["pr_min"]}': pr_1d > C['pr_min'],
+        'λ_min < 0.01 (aliasing exists)': eigvals[-1] < 0.01,
+        'Aliased direction is e-μ': set(aliased_pair) == {0, 1},
+        'e-μ concentration > 99%': v_min_concentration > 0.99,
+        'PID lifts λ_min > 10×': lift_min > 10,
+        'PR increases with PID': pr_pid > pr_1d,
         'NMF: PR within 50% of true': abs(pr_nmf - pr_1d) / pr_1d < 0.5,
     }
 
@@ -1199,7 +1211,7 @@ def run_all(quick=False, verbose=True):
     if verbose:
         print("╔══════════════════════════════════════════════════════════╗")
         print("║  tau_cdma: Framework Prediction Validation Suite         ║")
-        print("║  v0.5.0 (visible-mass benchmark)                         ║")
+        print("║  Unified Formalism v4.5                                  ║")
         print("╚══════════════════════════════════════════════════════════╝")
 
     bench = setup_benchmark()

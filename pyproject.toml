@@ -1,6 +1,6 @@
 [project]
 name = "tau-cdma"
-version = "0.4.9"
+version = "0.5.0"
 description = "Fisher-information geometry diagnostics for template-based particle identification"
 readme = "README.md"
 license = {file = "LICENSE"}

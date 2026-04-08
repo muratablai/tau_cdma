@@ -176,8 +176,8 @@ def bayes_confusion(A, theta):
             continue
         posts /= total
         # MAP decision: argmax returns lowest index on ties (deterministic
-        # tie-breaking convention A5). For the μ=0% theorem, ties never occur
-        # because e strictly dominates μ in every active bin.
+        # tie-breaking convention A5). For the heavy-ion kaon collapse,
+        # ties never occur because π strictly dominates K at the crossing.
         predicted = np.argmax(posts)
 
         # Weight by probability of bin i under each true channel

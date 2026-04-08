@@ -129,7 +129,7 @@ def cascade_tau_a1(N=1_000_000, M=200, sigma_det=20.0):
         'bottleneck' : which stage limits information ('stage1' or 'stage2')
         'SF_cascade' : cascade spreading factor
     """
-    from tau_cdma.tau.templates import M_TAU, M_A1, G_A1, M_RHO, G_RHO, M_PI0, bw_template
+    from tau_cdma.tau.templates import M_TAU, M_A1, G_A1, M_RHO, G_RHO, M_PI0, bw_template, THRESH_RHO
 
     m_bins = np.linspace(0, M_TAU, M)
     dm = m_bins[1] - m_bins[0]
@@ -154,9 +154,8 @@ def cascade_tau_a1(N=1_000_000, M=200, sigma_det=20.0):
     m_3pi = np.linspace(3 * M_PI0, M_A1 + 2*G_A1, M)
     dm2 = m_3pi[1] - m_3pi[0] if M > 1 else 1.0
 
-    rho_sub = bw_template(m_3pi, M_RHO, G_RHO, sigma_det=sigma_det*2)
-    flat_sub = np.ones(M)
-    flat_sub /= (np.sum(flat_sub) * dm2) if np.sum(flat_sub) > 0 else 1.0
+    rho_sub = bw_template(m_3pi, M_RHO, G_RHO, sigma_det=sigma_det*2, threshold=THRESH_RHO)
+    flat_sub = np.ones(M) / M  # PMF normalization, consistent with bw_template
 
     A2 = np.column_stack([rho_sub, flat_sub])
     theta2 = np.array([0.7, 0.3])

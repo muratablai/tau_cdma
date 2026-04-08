@@ -35,7 +35,7 @@ python -m tau_cdma.validate
 
 ## Prediction Numbering
 
-The formalism (Section 12) defines predictions P1-P9 for tau decay and P10-P16 for
+The formalism (Section 12) defines predictions P1-P4, P7-P8 plus eigenvalue collapse for tau decay, and P9-P16 for
 heavy-ion PID. The code validators cover:
 
 - **Tau side** (`tau_predictions.py`): P1, P2, P3, P4, P7, P8, plus a structural
@@ -89,7 +89,7 @@ tau_cdma/
 
 ## Version
 
-- Code: v0.4.9
+- Code: v0.5.0
 - Framework: v4.5 (Unified Formalism)
 - Python: >=3.10
 

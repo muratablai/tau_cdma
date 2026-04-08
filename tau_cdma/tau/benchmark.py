@@ -14,8 +14,8 @@ def default_config():
     """Default benchmark configuration."""
     return {
         'M': 200,                    # bins
-        'm_range': (0.0, 1800.0),    # MeV
-        'sigma_det': 20.0,           # MeV detector resolution
+        'm_range': (0.0, 2000.0),    # MeV (was 1800 in v0.4.9)
+        'sigma_det': 15.0,           # MeV detector resolution (Belle II-motivated)
         'N': 1_000_000,              # total events
         'background_density': 0.01,  # per MeV
         'theta': TAU_BR.copy(),

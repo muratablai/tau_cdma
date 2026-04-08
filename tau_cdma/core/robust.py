@@ -265,9 +265,9 @@ def dominance_margin(A, theta, target_class=1, competitor_class=0):
     collapses = min_margin > 0
     
     # Robustness: under multiplicative perturbation (1+ε), collapse persists if
-    # ε < tanh(γ/4) (from collaborator's lemma, sufficient condition)
+    # ε < tanh(γ/8) (from collaborator's lemma, sufficient condition)
     if min_margin > 0:
-        margin_threshold = np.tanh(min_margin / 4.0)
+        margin_threshold = np.tanh(min_margin / 8.0)
     else:
         margin_threshold = 0.0
     

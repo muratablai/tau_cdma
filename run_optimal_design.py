@@ -101,7 +101,7 @@ for k in [2, 3, 5, 10, 20]:
     print(f"{k:3d}  {ft:12.2f}  {ratio:8.4f}  {'YES' if ok else 'NO':>8s}")
 
 # ---------- Submodularity verification ----------
-print(f"\nSubmodularity verification (50 random tests)...")
+print(f"\nSubmodularity verification (50 random-size nested-set tests)...")
 B_proj = (U.T @ A_tpc.T).T
 lam = N * A_tpc @ THETA; W = 1.0 / np.maximum(lam, 1e-30)
 rng = np.random.default_rng(42)

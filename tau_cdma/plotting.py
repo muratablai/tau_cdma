@@ -168,6 +168,7 @@ def plot_cascade_info(cascade_result, save_path=None):
     I1 = cascade_result['I1']
     I2 = cascade_result['I2']
     SF = cascade_result['SF_cascade']
+    ratio = I1 / I2
 
     fig, ax = plt.subplots(figsize=(6, 4))
     stages = ['Stage 1\nτ→a₁ν', 'Stage 2\na₁→3π']
@@ -176,18 +177,27 @@ def plot_cascade_info(cascade_result, save_path=None):
 
     bars = ax.bar(stages, values, color=colors, edgecolor='black', width=0.5)
     ax.set_ylabel('Fisher Information (trace)')
-    ax.set_title(f'P4: Cascade Bottleneck (SF_cascade = {SF:.1f})')
-    ax.set_yscale('log')
+    ax.set_title(f'P4: Cascade Bottleneck (I₁/I₂ = {ratio:.1f}×)')
+    ax.ticklabel_format(axis='y', style='scientific', scilimits=(0, 0))
+    ax.set_ylim(0, max(values) * 1.15)
+    ax.grid(True, alpha=0.3, axis='y')
 
     # Arrow showing bottleneck
     bottleneck_idx = 0 if I1 < I2 else 1
     ax.annotate('BOTTLENECK', xy=(bottleneck_idx, values[bottleneck_idx]),
-                xytext=(bottleneck_idx, values[bottleneck_idx] * 3),
-                ha='center', fontsize=10, color='red',
+                xytext=(bottleneck_idx + 0.3, values[bottleneck_idx] * 1.08),
+                ha='center', fontsize=10, color='red', fontweight='bold',
                 arrowprops=dict(arrowstyle='->', color='red', lw=2))
 
+    # Add value labels on bars
+    for bar, val in zip(bars, values):
+        ax.text(bar.get_x() + bar.get_width()/2, val + max(values)*0.02,
+                f'{val:.2e}', ha='center', va='bottom', fontsize=9)
+
+    plt.tight_layout()
     if save_path:
-        fig.savefig(save_path)
+        fig.savefig(save_path, dpi=150, bbox_inches='tight')
+    plt.close()
     return fig
 
 
