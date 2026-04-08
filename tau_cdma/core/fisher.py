@@ -262,13 +262,13 @@ def constrained_crb(F, C=None, method='auto'):
 
 
 def crb_multiuser_efficiency(F, CRB_c=None):
-    """CRB-based multiuser efficiency (correction C2).
+    """CRB-based multiuser efficiency.
 
     η_k = 1 / ([F⁻¹]_kk · F_kk)
 
-    This is the decorrelator asymptotic multiuser efficiency (AME),
-    equivalent to the CRB-based definition. Not the same as the
-    R-matrix efficiency in interference.py (which uses R⁻¹).
+    This is algebraically equivalent to η_k = 1 / [R⁻¹]_kk from
+    interference.py when R is invertible, since [R⁻¹]_kk = F_kk · [F⁻¹]_kk.
+    Both compute the decorrelator asymptotic multiuser efficiency (AME).
 
     Parameters
     ----------

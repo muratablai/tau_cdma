@@ -170,10 +170,10 @@ def main():
         if os.path.exists(pyproject_path):
             with open(pyproject_path) as f:
                 content = f.read()
-            if '0.5.0' in content:
+            if '0.5.1' in content:
                 version_checks['pyproject'] = 'PASS'
             else:
-                version_checks['pyproject'] = 'FAIL: not 0.5.0'
+                version_checks['pyproject'] = 'FAIL: not 0.5.1'
         
         # Check README
         readme_path = os.path.join(pkg_dir, 'README.md')
@@ -182,7 +182,7 @@ def main():
                 content = f.read()
             if '0.4.9' in content or '0.4.8' in content:
                 version_checks['readme'] = 'FAIL: stale version in README'
-            elif '0.5.0' in content:
+            elif '0.5.1' in content:
                 version_checks['readme'] = 'PASS'
             else:
                 version_checks['readme'] = 'PASS'

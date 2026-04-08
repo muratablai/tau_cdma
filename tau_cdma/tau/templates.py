@@ -114,10 +114,12 @@ def breit_wigner_smeared(m_bins, m0, gamma, sigma_det=15.0, threshold=None):
     fine = np.linspace(0, 2500.0, 10000)
     df = fine[1] - fine[0]
 
-    # Relativistic Breit-Wigner
+    # Relativistic Breit-Wigner in s = m^2, converted to mass density
+    # BW(s) = m0*Γ / ((s-s0)^2 + s0*Γ^2), with Jacobian ds = 2m dm
     s = fine**2
     s0 = m0**2
     bw = m0 * gamma / ((s - s0)**2 + s0 * gamma**2)
+    bw = bw * 2 * fine  # Jacobian: density in m, not s
 
     # Apply physical threshold
     if threshold is not None:

@@ -89,7 +89,7 @@ tau_cdma/
 
 ## Version
 
-- Code: v0.5.0
+- Code: v0.5.1
 - Framework: v4.5 (Unified Formalism)
 - Python: >=3.10
 
